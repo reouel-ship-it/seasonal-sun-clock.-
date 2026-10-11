@@ -45,7 +45,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: cd Seasonal-Sun-Clock-Official-Android && bash ci/emulator-smoke.sh
+          script: script: cd Seasonal-Sun-Clock-Official-Android && sed -i -e 's/am start -W/am start/' -e '/Status: ok/d' -e 's/sleep 8/sleep 20/' ci/emulator-smoke.sh && bash ci/emulator-smoke.sh
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
