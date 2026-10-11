@@ -1,0 +1,56 @@
+name: Build and verify Seasonal Sun Clock APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out uploaded files
+        uses: actions/checkout@v4
+      - name: Extract Android project
+        run: |
+          unzip -q Seasonal-Sun-Clock-Android-Official-Source.zip
+          test -f Seasonal-Sun-Clock-Official-Android/app/build.gradle
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android SDK components
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Check calculations and source files
+        working-directory: Seasonal-Sun-Clock-Official-Android
+        run: bash ci/validate-source.sh
+      - name: Build APK
+        working-directory: Seasonal-Sun-Clock-Official-Android
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify signature
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose Seasonal-Sun-Clock-Official-Android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Install and test in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: cd Seasonal-Sun-Clock-Official-Android && bash ci/emulator-smoke.sh
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Seasonal-Sun-Clock-Verified-APK
+          path: |
+            Seasonal-Sun-Clock-Official-Android/app/build/outputs/apk/debug/app-debug.apk
+            Seasonal-Sun-Clock-Official-Android/ci/emulator-screenshot.png
